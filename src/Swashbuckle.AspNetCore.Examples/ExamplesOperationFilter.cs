@@ -20,11 +20,12 @@ namespace Swashbuckle.AspNetCore.Examples
 
         public void Apply(Operation operation, OperationFilterContext context)
         {
-            SetRequestModelExamples(operation, context.SchemaRegistry, context.ApiDescription);
-            SetResponseModelExamples(operation, context.ApiDescription);
+            SetRequestDefinitionExamples(operation, context.SchemaRegistry, context.ApiDescription);
+            SetResponseExamples(operation, context.ApiDescription);
+            SetResponseDefinitionExamples(context.SchemaRegistry, context.ApiDescription);
         }
 
-        private static void SetRequestModelExamples(Operation operation, ISchemaRegistry schemaRegistry, ApiDescription apiDescription)
+        private static void SetRequestDefinitionExamples(Operation operation, ISchemaRegistry schemaRegistry, ApiDescription apiDescription)
         {
             var actionAttributes = apiDescription.ActionAttributes();
             var swaggerRequestAttributes = actionAttributes.Where(r => r.GetType() == typeof(SwaggerRequestExampleAttribute));
@@ -61,7 +62,7 @@ namespace Swashbuckle.AspNetCore.Examples
             }
         }
 
-        private static void SetResponseModelExamples(Operation operation, ApiDescription apiDescription)
+        private static void SetResponseExamples(Operation operation, ApiDescription apiDescription)
         {
             var actionAttributes = apiDescription.ActionAttributes();
             var swaggerResponseExampleAttributes = actionAttributes.Where(r => r.GetType() == typeof(SwaggerResponseExampleAttribute));
@@ -69,6 +70,11 @@ namespace Swashbuckle.AspNetCore.Examples
             foreach (var attribute in swaggerResponseExampleAttributes)
             {
                 var attr = (SwaggerResponseExampleAttribute)attribute;
+                if (attr.StatusCode == 0)
+                {
+                    continue;
+                }
+
                 var statusCode = attr.StatusCode.ToString();
 
                 var response = operation.Responses.FirstOrDefault(r => r.Key == statusCode);
@@ -83,6 +89,42 @@ namespace Swashbuckle.AspNetCore.Examples
 
                         response.Value.Examples = FormatJson(provider, serializerSettings, true);
                     }
+                }
+            }
+        }
+
+        private static void SetResponseDefinitionExamples(ISchemaRegistry schemaRegistry, ApiDescription apiDescription)
+        {
+            var actionAttributes = apiDescription.ActionAttributes();
+            var swaggerResponseExampleAttributes = actionAttributes.Where(r => r.GetType() == typeof(SwaggerResponseExampleAttribute));
+
+            foreach (var attribute in swaggerResponseExampleAttributes)
+            {
+                var attr = (SwaggerResponseExampleAttribute)attribute;
+                if (attr.ResponseType == null)
+                {
+                    continue;
+                }
+
+                var schema = schemaRegistry.GetOrRegister(attr.ResponseType);
+
+                var provider = ExamplesProvider(_services, attr.ExamplesProviderType);
+
+                // var name = attr.RequestType.Name; // this doesn't work for generic types, so need to to schema.ref split
+                var parts = schema.Ref?.Split('/');
+                if (parts == null)
+                {
+                    continue;
+                }
+
+                var name = parts.Last();
+
+                if (schemaRegistry.Definitions.ContainsKey(name))
+                {
+                    var definitionToUpdate = schemaRegistry.Definitions[name];
+                    var serializerSettings = SerializerSettings(attr.ContractResolver, attr.JsonConverter);
+
+                    definitionToUpdate.Example = FormatJson(provider, serializerSettings, false);
                 }
             }
         }

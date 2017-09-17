@@ -35,6 +35,7 @@ namespace WebApi
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new Info { Title = "My API", Version = "v1" });
+                c.DescribeAllEnumsAsStrings();
 
                 c.OperationFilter<ExamplesOperationFilter>();
                 c.OperationFilter<DescriptionOperationFilter>();
