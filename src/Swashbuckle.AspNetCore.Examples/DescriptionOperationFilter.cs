@@ -37,22 +37,40 @@ namespace Swashbuckle.AspNetCore.Examples
                     {
                         if (schemaRegistry.Definitions.ContainsKey(attr.Type.Name))
                         {
-                            var definition = schemaRegistry.Definitions[ResolveDefinitionKey(attr.Type)];
-
-                            var propertiesWithDescription = attr.Type.GetProperties().Where(prop => prop.IsDefined(typeof(DescriptionAttribute), false));
-
-                            foreach (var prop in propertiesWithDescription)
-                            {
-                                var descriptionAttribute = (DescriptionAttribute)prop.GetCustomAttributes(typeof(DescriptionAttribute), false).First();
-                                var propName = ToCamelCase(prop.Name);
-                                definition.Properties[propName].Description = descriptionAttribute.Description;
-                            }
+                            RecursivelyParseDescriptions(schemaRegistry, attr.Type);
                         }
                     }
                 }
             }
         }
-        
+
+        private static void RecursivelyParseDescriptions(ISchemaRegistry schemaRegistry, Type propType)
+        {
+            var definition = schemaRegistry.Definitions[ResolveDefinitionKey(propType)];
+
+            var propertiesWithDescription = propType.GetProperties().Where(prop => prop.IsDefined(typeof(DescriptionAttribute), false));
+
+            foreach (var prop in propertiesWithDescription)
+            {
+                var descriptionAttribute =
+                    (DescriptionAttribute)prop.GetCustomAttributes(typeof(DescriptionAttribute), false).First();
+                var propName = ToCamelCase(prop.Name);
+                definition.Properties[propName].Description = descriptionAttribute.Description;
+            }
+
+            //iterate children that are in this assembly
+            var allProperties = propType.GetProperties()
+                .Where(prop => prop.PropertyType.GetTypeInfo().Assembly == propType.GetTypeInfo().Assembly);
+
+            foreach (var prop in allProperties)
+            {
+                if (schemaRegistry.Definitions.ContainsKey(prop.Name))
+                {
+                    RecursivelyParseDescriptions(schemaRegistry, prop.PropertyType);
+                }
+            }
+        }
+
         private static string ResolveDefinitionKey(Type type)
         {
           return IdManager.IdFor(type);
