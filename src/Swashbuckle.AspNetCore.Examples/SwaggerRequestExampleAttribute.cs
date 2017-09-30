@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Serialization;
 using System;
+using System.Reflection;
 using Newtonsoft.Json;
 
 namespace Swashbuckle.AspNetCore.Examples
@@ -21,6 +22,14 @@ namespace Swashbuckle.AspNetCore.Examples
         /// <param name="jsonConverter">An optional jsonConverter to use, e.g. typeof(StringEnumConverter) will render strings as enums</param>
         public SwaggerRequestExampleAttribute(Type requestType, Type examplesProviderType, Type contractResolver = null, Type jsonConverter = null)
         {
+            if (examplesProviderType.GetTypeInfo().GetInterface(nameof(IExamplesProvider)) == null)
+            {
+                throw new InvalidTypeException(
+                    paramName: nameof(examplesProviderType),
+                    invalidType: examplesProviderType,
+                    expectedType: typeof(IExamplesProvider));
+            }
+
             RequestType = requestType;
             ExamplesProviderType = examplesProviderType;
             JsonConverter = jsonConverter == null ? null : (JsonConverter)Activator.CreateInstance(jsonConverter);
