@@ -21,7 +21,7 @@ namespace Swashbuckle.AspNetCore.Examples
 
             operation.Consumes.Add("multipart/form-data");
 
-            RemoveExistingFileParameters(operation.Parameters);
+            operation.Parameters.Clear();
 
             operation.Parameters.Add(new NonBodyParameter
                 {
@@ -32,14 +32,6 @@ namespace Swashbuckle.AspNetCore.Examples
                     Description = "A file to upload"
                 }
             );
-        }
-
-        private void RemoveExistingFileParameters(IList<IParameter> operationParameters)
-        {
-            foreach (var parameter in operationParameters.Where(p => p.In == "query" && fileParameters.Contains(p.Name)).ToList())
-            {
-                operationParameters.Remove(parameter);
-            }
         }
     }
 }
